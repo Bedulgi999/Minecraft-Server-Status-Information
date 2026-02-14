@@ -3,7 +3,7 @@
 // ============================
 const SERVER_NAME = "Bedulgi Server";
 const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // ✅ playit 주소
-const BRIDGE_HTTP = "https://quick-foo-nominations-understood.trycloudflare.com";w // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
+const BRIDGE_HTTP = "https://quick-foo-nominations-understood.trycloudflare.com"; // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
 // ============================
 
 const REFRESH_MS = 15000;
