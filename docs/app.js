@@ -1,8 +1,9 @@
 // ================================
 // 설정 (너가 바꾸는 곳은 여기 2줄만)
 // ================================
-const SERVER_ADDRESS = "ring-chose.gl.joinmc.link";
-const BRIDGE_HTTP = "https://checked-approve-communications-configuration.trycloudflare.com";
+const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // ✅ playit 주소
+const BRIDGE_HTTP = "https://high-speed-forms-merely.trycloudflare.com"; // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
+
 // 폴링 간격 (bridge 쪽은 15초 샘플링)
 const UI_REFRESH_MS = 5000;
 const HISTORY_LIMIT = 360; // 360 points ~ 90분(15s)
