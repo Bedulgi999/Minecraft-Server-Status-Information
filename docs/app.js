@@ -2,8 +2,8 @@
 // ✅ EDIT THESE VALUES
 // ============================
 const SERVER_NAME = "My Minecraft Server";
-const SERVER_ADDRESS = "YOUR_PUBLIC_IP_OR_DOMAIN:25565"; // e.g. play.example.com:25565
-const BRIDGE_HTTP = "http://YOUR_PUBLIC_IP_OR_DOMAIN:9000"; // Bridge base URL (http/https). Leave empty to disable admin features.
+const SERVER_ADDRESS = "127.0.0.1:25565"; // e.g. play.example.com:25565
+const BRIDGE_HTTP = "https://roulette-civic-surrounding-menus.trycloudflare.com"; // Bridge base URL (http/https). Leave empty to disable admin features.
 // ============================
 
 const REFRESH_MS = 15000;              // status refresh
