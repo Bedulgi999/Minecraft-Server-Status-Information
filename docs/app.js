@@ -2,7 +2,7 @@
 // ✅ EDIT THESE VALUES
 // ============================
 const SERVER_NAME = "My Minecraft Server";
-const SERVER_ADDRESS = "72.14.201.174:25565"; // e.g. play.example.com:25565
+const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // e.g. play.example.com:25565
 const BRIDGE_HTTP = "https://roulette-civic-surrounding-menus.trycloudflare.com"; // Bridge base URL (http/https). Leave empty to disable admin features.
 // ============================
 
