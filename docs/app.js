@@ -1,317 +1,247 @@
-// ============================
-// ✅ EDIT THESE VALUES
-// ============================
-const SERVER_NAME = "Bedulgi Server";
+// ================================
+// 설정 (너가 바꾸는 곳은 여기 2줄만)
+// ================================
 const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // ✅ playit 주소
-const BRIDGE_HTTP = "https://quick-foo-nominations-understood.trycloudflare.com"; // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
-// ============================
+const BRIDGE_HTTP = "https://quick-foo-nominations-understood.trycloudflare.com";w // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
 
-const REFRESH_MS = 15000;
-const HISTORY_MAX_POINTS = 240; // 60min @ 15s
-const LS_HISTORY_KEY = "mc_player_history_v1";
+// 폴링 간격 (bridge 쪽은 15초 샘플링)
+const UI_REFRESH_MS = 5000;
+const HISTORY_LIMIT = 360; // 360 points ~ 90분(15s)
 
-// UI refs
-const dot = document.getElementById("dot");
-const liveText = document.getElementById("liveText");
-const iconEl = document.getElementById("icon");
-const serverNameEl = document.getElementById("serverName");
-const serverAddrEl = document.getElementById("serverAddr");
-const badgeEl = document.getElementById("badge");
-const pingEl = document.getElementById("ping");
-const versionEl = document.getElementById("version");
-const playersEl = document.getElementById("players");
-const fillEl = document.getElementById("fill");
-const motdEl = document.getElementById("motd");
-const updatedEl = document.getElementById("updated");
-const sourceEl = document.getElementById("source");
+// ================================
+const $ = (id) => document.getElementById(id);
 
-const difficultyEl = document.getElementById("difficulty");
-const gamemodeEl = document.getElementById("gamemode");
-const whitelistEl = document.getElementById("whitelist");
-const onlineModeEl = document.getElementById("onlineMode");
-const viewDistanceEl = document.getElementById("viewDistance");
-const simDistanceEl = document.getElementById("simDistance");
-const maxPlayersEl = document.getElementById("maxPlayers");
-const pvpEl = document.getElementById("pvp");
+const el = {
+  globalDot: $("globalDot"),
+  globalText: $("globalText"),
+  badge: $("badge"),
+  serverAddr: $("serverAddr"),
+  pingVal: $("pingVal"),
+  verVal: $("verVal"),
+  playerFill: $("playerFill"),
+  playerVal: $("playerVal"),
+  motdVal: $("motdVal"),
+  chart: $("chart"),
+  chartFoot: $("chartFoot"),
+  bridgeState: $("bridgeState"),
+  settingsGrid: $("settingsGrid"),
+  logs: $("logs"),
+  btnClearLogs: $("btnClearLogs"),
+  btnReloadSettings: $("btnReloadSettings"),
+  historyHint: $("historyHint"),
+};
 
-const logBox = document.getElementById("logBox");
-const logHint = document.getElementById("logHint");
-const adminState = document.getElementById("adminState");
-const reconnectBtn = document.getElementById("reconnectBtn");
-const refreshSettingsBtn = document.getElementById("refreshSettingsBtn");
-
-const canvas = document.getElementById("chart");
-const ctx = canvas.getContext("2d");
-
-serverNameEl.textContent = SERVER_NAME;
-serverAddrEl.textContent = SERVER_ADDRESS;
-
-function setLive(state, text){
-  liveText.textContent = text;
-  dot.style.background = state === "on" ? "var(--green1)"
-                    : state === "off" ? "var(--red1)"
-                    : "var(--yellow)";
-}
-function pct(online, max){
-  if(!online || !max) return 0;
-  return Math.max(0, Math.min(100, (online / max) * 100));
-}
-function setBadge(online){
-  if(online){
-    badgeEl.className = "badge on";
-    badgeEl.textContent = "ONLINE";
-    fillEl.className = "fill";
-  }else{
-    badgeEl.className = "badge off";
-    badgeEl.textContent = "OFFLINE";
-    fillEl.className = "fill off";
-  }
-}
-function setIcon(icon){
-  if(icon){
-    iconEl.innerHTML = `<img src="${icon}" alt="icon">`;
-  }else{
-    iconEl.textContent = "?";
+function setOnlineUI(online) {
+  if (online) {
+    el.globalDot.style.background = "var(--good)";
+    el.globalText.textContent = "online";
+    el.badge.textContent = "ONLINE";
+    el.badge.style.background = "rgba(69,224,143,.22)";
+    el.badge.style.color = "#d6ffe9";
+  } else {
+    el.globalDot.style.background = "var(--bad)";
+    el.globalText.textContent = "offline";
+    el.badge.textContent = "OFFLINE";
+    el.badge.style.background = "rgba(255,0,0,.22)";
+    el.badge.style.color = "#ffd0d0";
   }
 }
 
-async function fetchPublicStatus(){
-  const encoded = encodeURIComponent(SERVER_ADDRESS);
-  const url = `https://api.mcsrvstat.us/3/${encoded}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if(!res.ok) throw new Error(`public api failed: ${res.status}`);
-  const j = await res.json();
-
-  const online = !!j.online;
-  const playersOnline = online ? j?.players?.online ?? null : null;
-  const playersMax = online ? j?.players?.max ?? null : null;
-
-  let motd = "";
-  if (online){
-    if (Array.isArray(j?.motd?.clean)) motd = j.motd.clean.join("\n");
-    else if (Array.isArray(j?.motd?.raw)) motd = j.motd.raw.join("\n");
-  }
-
-  const version = online ? (j?.version ?? "") : "";
-  const icon = online && typeof j?.icon === "string" && j.icon.startsWith("data:image") ? j.icon : null;
-
-  return { online, playersOnline, playersMax, motd, version, icon, latency: null, source: "mcsrvstat.us" };
+function safeUrlJoin(base, path) {
+  if (!base) return path;
+  return base.replace(/\/+$/, "") + path;
 }
 
-// ------------------
-// Player history graph (localStorage)
-// ------------------
-function loadHistory(){
-  try{
-    const raw = localStorage.getItem(LS_HISTORY_KEY);
-    if(!raw) return [];
-    const arr = JSON.parse(raw);
-    if(!Array.isArray(arr)) return [];
-    return arr.filter(p => p && typeof p.t === "number" && typeof p.v === "number");
-  }catch(_){
-    return [];
-  }
-}
-function saveHistory(arr){
-  localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(arr.slice(-HISTORY_MAX_POINTS)));
-}
-function pushHistory(value){
-  const arr = loadHistory();
-  arr.push({ t: Date.now(), v: Number(value) || 0 });
-  saveHistory(arr);
-  drawChart(arr);
-}
-function drawChart(arr){
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.floor(rect.width * dpr);
-  canvas.height = Math.floor(rect.height * dpr);
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-
-  const w = rect.width;
-  const h = rect.height;
-
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = "rgba(0,0,0,.18)";
-  ctx.fillRect(0,0,w,h);
-
-  ctx.strokeStyle = "rgba(255,255,255,.06)";
-  ctx.lineWidth = 1;
-  const gridY = 4;
-  for(let i=1;i<gridY;i++){
-    const y = (h/gridY)*i;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
-  }
-
-  if(arr.length < 2){
-    ctx.fillStyle = "rgba(143,179,194,.9)";
-    ctx.font = "12px ui-monospace, Menlo, monospace";
-    ctx.fillText("데이터 수집 중…", 10, 18);
-    return;
-  }
-
-  const values = arr.map(p=>p.v);
-  const maxV = Math.max(1, ...values);
-  const minV = 0;
-
-  const padL = 10, padR = 10, padT = 10, padB = 18;
-  const plotW = w - padL - padR;
-  const plotH = h - padT - padB;
-
-  ctx.strokeStyle = "rgba(85,255,85,.9)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  arr.forEach((p, i)=>{
-    const x = padL + (i/(arr.length-1))*plotW;
-    const y = padT + (1 - (p.v - minV)/(maxV - minV)) * plotH;
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  });
-  ctx.stroke();
-
-  const last = arr[arr.length-1].v;
-  ctx.fillStyle = "rgba(215,243,255,.9)";
-  ctx.font = "12px ui-monospace, Menlo, monospace";
-  ctx.fillText(`현재: ${last}명 (max scale: ${maxV})`, 10, h-6);
-}
-
-window.addEventListener("resize", ()=> drawChart(loadHistory()));
-
-// ------------------
-// Bridge: settings + websocket logs (NO LOGIN)
-// ------------------
-let ws = null;
-
-function bridgeWsUrl(){
-  if(!BRIDGE_HTTP) return "";
-  const u = new URL(BRIDGE_HTTP);
+function wsUrlFor(baseHttp, wsPath) {
+  const u = new URL(baseHttp);
   u.protocol = (u.protocol === "https:") ? "wss:" : "ws:";
-  u.pathname = "/ws/logs";
+  u.pathname = wsPath;
   u.search = "";
   return u.toString();
 }
 
-function appendLog(line){
-  const lines = logBox.textContent.split("\n");
-  lines.push(line);
-  if(lines.length > 2000) lines.splice(0, lines.length - 2000);
-  logBox.textContent = lines.join("\n");
-  logBox.scrollTop = logBox.scrollHeight;
+async function fetchJson(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return await r.json();
 }
 
-function connectLogs(){
-  if(!BRIDGE_HTTP){
-    logHint.textContent = "disabled";
-    adminState.textContent = "BRIDGE_HTTP 비어있음";
+// ================================
+// STATUS (브라우저가 25565 직접 못 때리는 문제 해결: bridge에서 핑)
+// ================================
+async function refreshStatus() {
+  try {
+    const status = await fetchJson(safeUrlJoin(BRIDGE_HTTP, "/status"));
+    setOnlineUI(!!status.online);
+
+    el.pingVal.textContent = status.latency_ms != null ? `${status.latency_ms} ms` : "-";
+    el.verVal.textContent = status.version_name || "-";
+
+    const on = Number(status.players_online || 0);
+    const mx = Number(status.players_max || 0);
+    el.playerVal.textContent = (mx > 0) ? `${on} / ${mx}` : `${on} / -`;
+    el.playerFill.style.width = (mx > 0) ? `${Math.min(100, Math.round((on / mx) * 100))}%` : (on > 0 ? "30%" : "0%");
+    el.motdVal.textContent = status.motd || "-";
+
+    el.chartFoot.textContent = `현재: ${on}명`;
+    el.bridgeState.textContent = `Bridge: OK (${status.mc_host}:${status.mc_port})`;
+  } catch (e) {
+    // bridge 자체가 죽었거나 주소가 틀린 경우
+    setOnlineUI(false);
+    el.bridgeState.textContent = `Bridge: ERROR (${e.message})`;
+  }
+}
+
+// ================================
+// HISTORY
+// ================================
+function drawHistory(points) {
+  const canvas = el.chart;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // background grid
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  for (let i = 0; i <= 10; i++) {
+    const y = Math.round((H * i) / 10);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  if (!points || points.length === 0) {
+    ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.font = "16px ui-monospace, Menlo, Consolas, monospace";
+    ctx.fillText("No data", 20, 40);
     return;
   }
-  if(ws) { try{ ws.close(); }catch(_){} ws = null; }
-  logHint.textContent = "connecting…";
-  adminState.textContent = "Bridge 연결 중…";
-  logBox.textContent = "";
 
-  ws = new WebSocket(bridgeWsUrl());
-  ws.onopen = () => {
-    logHint.textContent = "live";
-    adminState.textContent = "Bridge 연결됨";
-    appendLog("---- log stream connected ----");
-  };
+  const values = points.map(p => (p.online ? (p.players_online || 0) : 0));
+  const maxV = Math.max(1, ...values);
+
+  // line
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(124,255,107,.95)";
+  ctx.beginPath();
+  for (let i = 0; i < values.length; i++) {
+    const x = (W - 20) * (i / (values.length - 1)) + 10;
+    const y = H - 10 - ((H - 20) * (values[i] / maxV));
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // max label
+  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.font = "12px ui-monospace, Menlo, Consolas, monospace";
+  ctx.fillText(`max scale: ${maxV}`, 12, H - 12);
+}
+
+async function refreshHistory() {
+  try {
+    const data = await fetchJson(safeUrlJoin(BRIDGE_HTTP, `/history?limit=${HISTORY_LIMIT}`));
+    const points = data.points || [];
+    const interval = data.interval_sec || 15;
+    const mins = Math.round((points.length * interval) / 60);
+    el.historyHint.textContent = `최근 ${mins}분 (${interval}s 간격)`;
+    drawHistory(points);
+  } catch (e) {
+    // ignore, status에서 브릿지 에러 표시됨
+  }
+}
+
+// ================================
+// SETTINGS
+// ================================
+function renderSettings(props) {
+  el.settingsGrid.innerHTML = "";
+  const order = [
+    "difficulty", "gamemode", "white-list", "online-mode",
+    "view-distance", "simulation-distance", "max-players", "pvp",
+    "server-port", "motd"
+  ];
+  const keys = order.filter(k => props[k] !== undefined);
+  for (const k of keys) {
+    const v = props[k];
+    const div = document.createElement("div");
+    div.className = "set";
+    div.innerHTML = `<div class="k">${k.toUpperCase()}</div><div class="v">${(v ?? "-")}</div>`;
+    el.settingsGrid.appendChild(div);
+  }
+}
+
+async function refreshSettings() {
+  try {
+    const data = await fetchJson(safeUrlJoin(BRIDGE_HTTP, "/settings"));
+    renderSettings(data.properties || {});
+  } catch (e) {
+    // settings는 실패해도 치명적 아님
+  }
+}
+
+// ================================
+// LOGS WS
+// ================================
+let ws = null;
+
+function appendLog(line) {
+  const maxLines = 800;
+  const cur = el.logs.textContent.split("\n");
+  cur.push(line);
+  if (cur.length > maxLines) cur.splice(0, cur.length - maxLines);
+  el.logs.textContent = cur.join("\n");
+  el.logs.scrollTop = el.logs.scrollHeight;
+}
+
+function connectLogs() {
+  if (!BRIDGE_HTTP || BRIDGE_HTTP.includes("YOUR_CURRENT_TRYCLOUDFLARE_URL")) {
+    appendLog("[ui] BRIDGE_HTTP가 설정되지 않았습니다. app.js 상단의 BRIDGE_HTTP를 바꿔주세요.");
+    return;
+  }
+
+  const url = wsUrlFor(BRIDGE_HTTP, "/ws/logs");
+  ws = new WebSocket(url);
+
+  ws.onopen = () => appendLog("[ui] log ws connected");
   ws.onmessage = (ev) => appendLog(ev.data);
-  ws.onclose = () => { logHint.textContent = "disconnected"; appendLog("---- log stream disconnected ----"); };
-  ws.onerror = () => { logHint.textContent = "error"; };
+  ws.onclose = () => {
+    appendLog("[ui] log ws disconnected (retry in 3s)");
+    setTimeout(connectLogs, 3000);
+  };
+  ws.onerror = () => {
+    // onclose에서 재시도
+  };
 }
 
-async function fetchSettings(){
-  if(!BRIDGE_HTTP) return null;
-  const res = await fetch(`${BRIDGE_HTTP.replace(/\/$/, "")}/settings`, { cache: "no-store" });
-  if(!res.ok) throw new Error(`settings failed: ${res.status}`);
-  return await res.json();
+// ================================
+// INIT
+// ================================
+function init() {
+  el.serverAddr.textContent = SERVER_ADDRESS;
+
+  el.btnClearLogs.addEventListener("click", () => {
+    el.logs.textContent = "";
+  });
+
+  el.btnReloadSettings.addEventListener("click", async () => {
+    await refreshSettings();
+    appendLog("[ui] settings reloaded");
+  });
+
+  // first load
+  refreshStatus();
+  refreshHistory();
+  refreshSettings();
+  connectLogs();
+
+  // periodic refresh
+  setInterval(refreshStatus, UI_REFRESH_MS);
+  setInterval(refreshHistory, UI_REFRESH_MS * 3);
 }
 
-function applySettings(s){
-  const get = (k) => (s && s[k] !== undefined && s[k] !== null) ? String(s[k]) : "-";
-  difficultyEl.textContent = get("difficulty");
-  gamemodeEl.textContent = get("gamemode");
-  whitelistEl.textContent = get("whitelist");
-  onlineModeEl.textContent = get("online-mode");
-  viewDistanceEl.textContent = get("view-distance");
-  simDistanceEl.textContent = get("simulation-distance");
-  maxPlayersEl.textContent = get("max-players");
-  pvpEl.textContent = get("pvp");
-}
-
-// buttons
-reconnectBtn.addEventListener("click", connectLogs);
-refreshSettingsBtn.addEventListener("click", async ()=>{
-  adminState.textContent = "설정 불러오는 중…";
-  try{
-    const s = await fetchSettings();
-    applySettings(s);
-    adminState.textContent = "설정 갱신 완료";
-  }catch(e){
-    adminState.textContent = `설정 오류: ${e?.message ?? e}`;
-  }
-});
-
-// ------------------
-// Main refresh loop
-// ------------------
-async function refresh(){
-  setLive("mid", "fetching…");
-  try{
-    const st = await fetchPublicStatus();
-    setBadge(st.online);
-    setIcon(st.icon);
-
-    pingEl.textContent = st.online ? (st.latency ?? "-") : "-";
-    versionEl.textContent = st.online ? (st.version || "-") : "-";
-
-    const po = st.online ? (st.playersOnline ?? "-") : "-";
-    const pm = st.online ? (st.playersMax ?? "-") : "-";
-    playersEl.textContent = `${po} / ${pm}`;
-
-    const percent = st.online ? pct(Number(st.playersOnline ?? 0), Number(st.playersMax ?? 0)) : 100;
-    fillEl.style.width = `${st.online ? percent : 100}%`;
-
-    motdEl.textContent = st.online ? (st.motd || "") : "서버에 연결할 수 없음(주소/터널 확인)";
-    sourceEl.textContent = st.source;
-    updatedEl.textContent = new Date().toLocaleTimeString();
-    setLive(st.online ? "on" : "off", st.online ? "live" : "offline");
-
-    pushHistory(st.online ? Number(st.playersOnline ?? 0) : 0);
-  }catch(e){
-    setBadge(false); setIcon(null);
-    pingEl.textContent = "-";
-    versionEl.textContent = "-";
-    playersEl.textContent = "- / -";
-    fillEl.style.width = "100%";
-    motdEl.textContent = `오류: ${e?.message ?? e}`;
-    sourceEl.textContent = "error";
-    updatedEl.textContent = new Date().toLocaleTimeString();
-    setLive("off", "error");
-    pushHistory(0);
-  }
-
-  // refresh settings occasionally
-  if(BRIDGE_HTTP){
-    fetchSettings().then(applySettings).catch(()=>{});
-  }
-}
-
-(function init(){
-  const hist = loadHistory();
-  drawChart(hist.length ? hist : [{t:Date.now(), v:0}]);
-
-  if(BRIDGE_HTTP){
-    connectLogs();
-    fetchSettings().then(applySettings).catch(e=>{
-      adminState.textContent = `Bridge 오류: ${e?.message ?? e}`;
-      applySettings(null);
-    });
-  }else{
-    adminState.textContent = "Bridge 비활성화(BRIDGE_HTTP=\"\")";
-    applySettings(null);
-  }
-
-  refresh();
-  setInterval(refresh, REFRESH_MS);
-})();
+init();
