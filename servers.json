@@ -1,0 +1,3 @@
+[
+  { "name": "My Server", "address": "example.com:25565", "type": "java" }
+]
