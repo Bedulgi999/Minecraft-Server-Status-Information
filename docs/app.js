@@ -1,15 +1,14 @@
 // ============================
 // ✅ EDIT THESE VALUES
 // ============================
-const SERVER_NAME = "My Minecraft Server";
-const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // e.g. play.example.com:25565
-const BRIDGE_HTTP = "https://roulette-civic-surrounding-menus.trycloudflare.com"; // Bridge base URL (http/https). Leave empty to disable admin features.
+const SERVER_NAME = "Bedulgi Server";
+const SERVER_ADDRESS = "ring-chose.gl.joinmc.link"; // ✅ playit 주소
+const BRIDGE_HTTP = "https://YOUR_CURRENT_TRYCLOUDFLARE_URL.trycloudflare.com"; // ✅ cloudflared가 출력한 주소 (없으면 "" 로)
 // ============================
 
-const REFRESH_MS = 15000;              // status refresh
-const HISTORY_MAX_POINTS = 240;        // 60 minutes @ 15s
+const REFRESH_MS = 15000;
+const HISTORY_MAX_POINTS = 240; // 60min @ 15s
 const LS_HISTORY_KEY = "mc_player_history_v1";
-const LS_ADMIN_KEY = "mc_admin_token_v1";
 
 // UI refs
 const dot = document.getElementById("dot");
@@ -38,15 +37,8 @@ const pvpEl = document.getElementById("pvp");
 const logBox = document.getElementById("logBox");
 const logHint = document.getElementById("logHint");
 const adminState = document.getElementById("adminState");
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
 const reconnectBtn = document.getElementById("reconnectBtn");
-
-const modal = document.getElementById("modal");
-const pwInput = document.getElementById("pwInput");
-const modalLoginBtn = document.getElementById("modalLoginBtn");
-const modalCancelBtn = document.getElementById("modalCancelBtn");
-const modalMsg = document.getElementById("modalMsg");
+const refreshSettingsBtn = document.getElementById("refreshSettingsBtn");
 
 const canvas = document.getElementById("chart");
 const ctx = canvas.getContext("2d");
@@ -59,11 +51,6 @@ function setLive(state, text){
   dot.style.background = state === "on" ? "var(--green1)"
                     : state === "off" ? "var(--red1)"
                     : "var(--yellow)";
-  dot.style.boxShadow = state === "on"
-    ? "0 0 0 2px rgba(0,0,0,.35), 0 0 18px rgba(85,255,85,.25)"
-    : state === "off"
-    ? "0 0 0 2px rgba(0,0,0,.35), 0 0 18px rgba(255,85,85,.25)"
-    : "0 0 0 2px rgba(0,0,0,.35), 0 0 18px rgba(255,211,90,.25)";
 }
 function pct(online, max){
   if(!online || !max) return 0;
@@ -135,7 +122,6 @@ function pushHistory(value){
   drawChart(arr);
 }
 function drawChart(arr){
-  // resize canvas to device pixel ratio
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   canvas.width = Math.floor(rect.width * dpr);
@@ -145,12 +131,10 @@ function drawChart(arr){
   const w = rect.width;
   const h = rect.height;
 
-  // background
   ctx.clearRect(0,0,w,h);
   ctx.fillStyle = "rgba(0,0,0,.18)";
   ctx.fillRect(0,0,w,h);
 
-  // grid
   ctx.strokeStyle = "rgba(255,255,255,.06)";
   ctx.lineWidth = 1;
   const gridY = 4;
@@ -174,7 +158,6 @@ function drawChart(arr){
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
 
-  // line
   ctx.strokeStyle = "rgba(85,255,85,.9)";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -185,7 +168,6 @@ function drawChart(arr){
   });
   ctx.stroke();
 
-  // last value text
   const last = arr[arr.length-1].v;
   ctx.fillStyle = "rgba(215,243,255,.9)";
   ctx.font = "12px ui-monospace, Menlo, monospace";
@@ -195,29 +177,20 @@ function drawChart(arr){
 window.addEventListener("resize", ()=> drawChart(loadHistory()));
 
 // ------------------
-// Admin: login + fetch settings + WebSocket logs
+// Bridge: settings + websocket logs (NO LOGIN)
 // ------------------
-let adminToken = localStorage.getItem(LS_ADMIN_KEY) || "";
 let ws = null;
 
-function setAdminUI(loggedIn){
-  adminState.textContent = loggedIn ? "로그인됨" : "로그인 필요";
-  loginBtn.disabled = loggedIn;
-  logoutBtn.disabled = !loggedIn;
-  reconnectBtn.disabled = !loggedIn;
-}
-
-function wsUrl(){
+function bridgeWsUrl(){
   if(!BRIDGE_HTTP) return "";
   const u = new URL(BRIDGE_HTTP);
   u.protocol = (u.protocol === "https:") ? "wss:" : "ws:";
   u.pathname = "/ws/logs";
-  u.searchParams.set("token", adminToken);
+  u.search = "";
   return u.toString();
 }
 
 function appendLog(line){
-  // keep last ~2000 lines for performance
   const lines = logBox.textContent.split("\n");
   lines.push(line);
   if(lines.length > 2000) lines.splice(0, lines.length - 2000);
@@ -226,91 +199,58 @@ function appendLog(line){
 }
 
 function connectLogs(){
-  if(!adminToken || !BRIDGE_HTTP) return;
+  if(!BRIDGE_HTTP){
+    logHint.textContent = "disabled";
+    adminState.textContent = "BRIDGE_HTTP 비어있음";
+    return;
+  }
   if(ws) { try{ ws.close(); }catch(_){} ws = null; }
   logHint.textContent = "connecting…";
-  ws = new WebSocket(wsUrl());
-  ws.onopen = () => { logHint.textContent = "live"; appendLog("---- log stream connected ----"); };
-  ws.onmessage = (ev) => {
-    try{
-      const msg = JSON.parse(ev.data);
-      if(msg.type === "log") appendLog(msg.line);
-      else if(msg.type === "info") appendLog(`---- ${msg.message} ----`);
-    }catch(_){
-      appendLog(ev.data);
-    }
+  adminState.textContent = "Bridge 연결 중…";
+  logBox.textContent = "";
+
+  ws = new WebSocket(bridgeWsUrl());
+  ws.onopen = () => {
+    logHint.textContent = "live";
+    adminState.textContent = "Bridge 연결됨";
+    appendLog("---- log stream connected ----");
   };
+  ws.onmessage = (ev) => appendLog(ev.data);
   ws.onclose = () => { logHint.textContent = "disconnected"; appendLog("---- log stream disconnected ----"); };
   ws.onerror = () => { logHint.textContent = "error"; };
 }
 
 async function fetchSettings(){
-  if(!adminToken || !BRIDGE_HTTP) return;
-  const res = await fetch(`${BRIDGE_HTTP.replace(/\/$/, "")}/settings`, {
-    headers: { "Authorization": `Bearer ${adminToken}` },
-    cache: "no-store"
-  });
+  if(!BRIDGE_HTTP) return null;
+  const res = await fetch(`${BRIDGE_HTTP.replace(/\/$/, "")}/settings`, { cache: "no-store" });
   if(!res.ok) throw new Error(`settings failed: ${res.status}`);
   return await res.json();
 }
 
 function applySettings(s){
-  difficultyEl.textContent = s?.difficulty ?? "-";
-  gamemodeEl.textContent = s?.gamemode ?? "-";
-  whitelistEl.textContent = (s?.whitelist ?? "-").toString();
-  onlineModeEl.textContent = (s?.["online-mode"] ?? "-").toString();
-  viewDistanceEl.textContent = s?.["view-distance"] ?? "-";
-  simDistanceEl.textContent = s?.["simulation-distance"] ?? "-";
-  maxPlayersEl.textContent = s?.["max-players"] ?? "-";
-  pvpEl.textContent = (s?.pvp ?? "-").toString();
+  const get = (k) => (s && s[k] !== undefined && s[k] !== null) ? String(s[k]) : "-";
+  difficultyEl.textContent = get("difficulty");
+  gamemodeEl.textContent = get("gamemode");
+  whitelistEl.textContent = get("whitelist");
+  onlineModeEl.textContent = get("online-mode");
+  viewDistanceEl.textContent = get("view-distance");
+  simDistanceEl.textContent = get("simulation-distance");
+  maxPlayersEl.textContent = get("max-players");
+  pvpEl.textContent = get("pvp");
 }
 
-async function login(password){
-  if(!BRIDGE_HTTP) throw new Error("BRIDGE_HTTP is empty");
-  const res = await fetch(`${BRIDGE_HTTP.replace(/\/$/, "")}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-  if(!res.ok){
-    const t = await res.text().catch(()=> "");
-    throw new Error(`login failed (${res.status}) ${t}`);
-  }
-  const j = await res.json();
-  if(!j.token) throw new Error("missing token");
-  adminToken = j.token;
-  localStorage.setItem(LS_ADMIN_KEY, adminToken);
-  setAdminUI(true);
-  logBox.textContent = "";
-  connectLogs();
-  const s = await fetchSettings().catch(()=>null);
-  if(s) applySettings(s);
-}
-
-function logout(){
-  adminToken = "";
-  localStorage.removeItem(LS_ADMIN_KEY);
-  setAdminUI(false);
-  applySettings(null);
-  logBox.textContent = "로그인을 하면 실시간 로그가 표시됩니다.";
-  logHint.textContent = "WebSocket";
-  if(ws){ try{ ws.close(); }catch(_){} ws=null; }
-}
-
-// Modal hooks
-loginBtn.addEventListener("click", ()=>{ modal.hidden = false; modalMsg.textContent=""; pwInput.value=""; pwInput.focus(); });
-modalCancelBtn.addEventListener("click", ()=>{ modal.hidden = true; });
-modalLoginBtn.addEventListener("click", async ()=>{
-  modalMsg.textContent = "로그인 중…";
+// buttons
+reconnectBtn.addEventListener("click", connectLogs);
+refreshSettingsBtn.addEventListener("click", async ()=>{
+  adminState.textContent = "설정 불러오는 중…";
   try{
-    await login(pwInput.value);
-    modal.hidden = true;
+    const s = await fetchSettings();
+    applySettings(s);
+    adminState.textContent = "설정 갱신 완료";
   }catch(e){
-    modalMsg.textContent = `실패: ${e?.message ?? e}`;
+    adminState.textContent = `설정 오류: ${e?.message ?? e}`;
   }
 });
-logoutBtn.addEventListener("click", logout);
-reconnectBtn.addEventListener("click", connectLogs);
 
 // ------------------
 // Main refresh loop
@@ -332,14 +272,12 @@ async function refresh(){
     const percent = st.online ? pct(Number(st.playersOnline ?? 0), Number(st.playersMax ?? 0)) : 100;
     fillEl.style.width = `${st.online ? percent : 100}%`;
 
-    motdEl.textContent = st.online ? (st.motd || "") : "서버에 연결할 수 없음(공개 IP/포트포워딩 필요)";
+    motdEl.textContent = st.online ? (st.motd || "") : "서버에 연결할 수 없음(주소/터널 확인)";
     sourceEl.textContent = st.source;
     updatedEl.textContent = new Date().toLocaleTimeString();
     setLive(st.online ? "on" : "off", st.online ? "live" : "offline");
 
-    // update history (playersOnline when online, else 0)
     pushHistory(st.online ? Number(st.playersOnline ?? 0) : 0);
-
   }catch(e){
     setBadge(false); setIcon(null);
     pingEl.textContent = "-";
@@ -353,24 +291,24 @@ async function refresh(){
     pushHistory(0);
   }
 
-  // refresh settings if logged in
-  if(adminToken && BRIDGE_HTTP){
-    const s = await fetchSettings().catch(()=>null);
-    if(s) applySettings(s);
+  // refresh settings occasionally
+  if(BRIDGE_HTTP){
+    fetchSettings().then(applySettings).catch(()=>{});
   }
 }
 
 (function init(){
-  // draw history at start
   const hist = loadHistory();
   drawChart(hist.length ? hist : [{t:Date.now(), v:0}]);
 
-  setAdminUI(!!adminToken && !!BRIDGE_HTTP);
-  if(adminToken && BRIDGE_HTTP){
-    logBox.textContent = "";
+  if(BRIDGE_HTTP){
     connectLogs();
-    fetchSettings().then(applySettings).catch(()=>applySettings(null));
+    fetchSettings().then(applySettings).catch(e=>{
+      adminState.textContent = `Bridge 오류: ${e?.message ?? e}`;
+      applySettings(null);
+    });
   }else{
+    adminState.textContent = "Bridge 비활성화(BRIDGE_HTTP=\"\")";
     applySettings(null);
   }
 

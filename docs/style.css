@@ -119,12 +119,34 @@ body::before{
 canvas{width:100%;height:220px;display:block;}
 
 .admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+
+/* Minecraft-ish buttons */
 .btn{
-  padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
-  background:linear-gradient(180deg, rgba(85,255,85,.95), rgba(29,187,58,.95));
-  color:#06110a;font-weight:800;cursor:pointer;box-shadow: inset 0 -2px 0 rgba(0,0,0,.35);
+  position: relative;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,.18);
+  background: linear-gradient(180deg, rgba(120,255,120,.95), rgba(29,187,58,.95));
+  color:#06110a;
+  font-weight: 900;
+  letter-spacing:.2px;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25);
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.35),
+    inset 0 -4px 0 rgba(0,0,0,.35),
+    inset 0 2px 0 rgba(255,255,255,.18);
+  cursor:pointer;
+  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
 }
-.btn.ghost{background:rgba(0,0,0,.22);color:var(--text);}
+.btn:hover{ filter: brightness(1.05); }
+.btn:active{ transform: translateY(2px); }
+.btn.ghost{
+  background: linear-gradient(180deg, rgba(30,40,44,.9), rgba(10,15,17,.9));
+  color: var(--text);
+  border-color: rgba(255,255,255,.14);
+  text-shadow:none;
+}
+.btn:disabled{ cursor:not-allowed; opacity:.45; }
 
 .settings-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;}
 .setting{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;}
@@ -142,24 +164,6 @@ canvas{width:100%;height:220px;display:block;}
 
 .foot{margin-top:10px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;}
 .footer{margin-top:16px;color:var(--muted);font-size:12px;text-align:center;}
-
-/* Modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;}
-.modal-card{
-  width:min(520px, 100%);
-  background:linear-gradient(180deg, var(--panel), var(--panel2));
-  border:1px solid rgba(61,255,179,.16);
-  border-radius:16px;
-  box-shadow:var(--shadow);
-  padding:14px;
-}
-.modal-title{font-weight:900;margin-bottom:6px;}
-.modal-sub{color:var(--muted);font-size:12px;margin-bottom:10px;}
-.input{
-  width:100%;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.22);color:var(--text);outline:none;margin-bottom:10px;
-}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
 
 @media (max-width: 900px){ .settings-grid{grid-template-columns:repeat(2,1fr);} }
 @media (max-width: 520px){ .stats{grid-template-columns:1fr;} .settings-grid{grid-template-columns:1fr;} }

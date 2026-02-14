@@ -4,11 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Minecraft Server Status</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
   <link rel="stylesheet" href="./style.css" />
 </head>
+
 <body>
   <header class="header">
     <div class="brand">
@@ -30,7 +34,7 @@
               <div class="icon" id="icon">?</div>
               <div class="names">
                 <div class="name" id="serverName">My Minecraft Server</div>
-                <div class="addr mono" id="serverAddr">YOUR_PUBLIC_IP_OR_DOMAIN:25565</div>
+                <div class="addr mono" id="serverAddr">server-address</div>
               </div>
             </div>
             <div class="badge off" id="badge">OFFLINE</div>
@@ -76,14 +80,13 @@
 
           <div class="admin">
             <div class="section-head">
-              <div class="section-title">ADMIN</div>
-              <div class="mono small" id="adminState">로그인 필요</div>
+              <div class="section-title">SERVER SETTINGS</div>
+              <div class="mono small" id="adminState">Bridge 연결 대기</div>
             </div>
 
             <div class="admin-actions">
-              <button class="btn" id="loginBtn" type="button">로그인</button>
-              <button class="btn ghost" id="logoutBtn" type="button" disabled>로그아웃</button>
-              <button class="btn ghost" id="reconnectBtn" type="button" disabled>로그 재연결</button>
+              <button class="btn ghost" id="reconnectBtn" type="button">로그 재연결</button>
+              <button class="btn ghost" id="refreshSettingsBtn" type="button">설정 새로고침</button>
             </div>
 
             <div class="settings-grid">
@@ -102,7 +105,7 @@
                 <div class="section-title">LIVE LOGS</div>
                 <div class="mono small" id="logHint">WebSocket</div>
               </div>
-              <pre id="logBox" class="log-box">로그인을 하면 실시간 로그가 표시됩니다.</pre>
+              <pre id="logBox" class="log-box">Bridge 연결되면 로그가 표시됩니다.</pre>
             </div>
           </div>
 
@@ -115,24 +118,10 @@
     </section>
 
     <footer class="footer mono">
-      Public status: mcsrvstat.us • Admin (settings/logs): your Bridge API
+      Public status: mcsrvstat.us • Settings/Logs: your Bridge API (no-login)
     </footer>
   </main>
 
-  <!-- Login modal -->
-  <div class="modal" id="modal" hidden>
-    <div class="modal-card">
-      <div class="modal-title">Admin Login</div>
-      <div class="modal-sub mono">브릿지 비밀번호를 입력하세요</div>
-      <input id="pwInput" class="input mono" type="password" placeholder="Password" />
-      <div class="modal-actions">
-        <button class="btn" id="modalLoginBtn" type="button">로그인</button>
-        <button class="btn ghost" id="modalCancelBtn" type="button">취소</button>
-      </div>
-      <div class="mono small" id="modalMsg"></div>
-    </div>
-  </div>
-
   <script src="./app.js"></script>
 </body>
-</html>
+</html>w
