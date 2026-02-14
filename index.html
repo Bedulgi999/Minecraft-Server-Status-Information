@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Minecraft Server Status</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <header class="header">
+    <div class="brand">
+      <div class="logo">MINECRAFT<br>SERVER STATUS</div>
+      <div class="sub">Java • Single server • Live</div>
+    </div>
+    <div class="live">
+      <span class="dot" id="dot"></span>
+      <span class="mono" id="liveText">booting…</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid">
+      <div class="card">
+        <div class="card-inner">
+          <div class="top">
+            <div class="left">
+              <div class="icon" id="icon">?</div>
+              <div class="names">
+                <div class="name" id="serverName">My Minecraft Server</div>
+                <div class="addr mono" id="serverAddr">server-address</div>
+              </div>
+            </div>
+            <div class="badge off" id="badge">OFFLINE</div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="k">PING</div>
+              <div class="v mono" id="ping">-</div>
+            </div>
+            <div class="stat">
+              <div class="k">VERSION</div>
+              <div class="v mono" id="version">-</div>
+            </div>
+          </div>
+
+          <div class="bar-wrap">
+            <div class="bar-top">
+              <div>PLAYERS</div>
+              <div class="mono" id="players">- / -</div>
+            </div>
+            <div class="bar">
+              <div class="fill off" id="fill" style="width:100%"></div>
+            </div>
+          </div>
+
+          <div class="motd">
+            <div class="k">MOTD</div>
+            <div class="v" id="motd">-</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="section-head">
+            <div class="section-title">PLAYER HISTORY</div>
+            <div class="mono small">최근 60분 (15s 간격)</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart" width="1000" height="220"></canvas>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="admin">
+            <div class="section-head">
+              <div class="section-title">SERVER SETTINGS</div>
+              <div class="mono small" id="adminState">Bridge 연결 대기</div>
+            </div>
+
+            <div class="admin-actions">
+              <button class="btn ghost" id="reconnectBtn" type="button">로그 재연결</button>
+              <button class="btn ghost" id="refreshSettingsBtn" type="button">설정 새로고침</button>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting"><div class="k">DIFFICULTY</div><div class="v mono" id="difficulty">-</div></div>
+              <div class="setting"><div class="k">GAMEMODE</div><div class="v mono" id="gamemode">-</div></div>
+              <div class="setting"><div class="k">WHITELIST</div><div class="v mono" id="whitelist">-</div></div>
+              <div class="setting"><div class="k">ONLINE-MODE</div><div class="v mono" id="onlineMode">-</div></div>
+              <div class="setting"><div class="k">VIEW-DISTANCE</div><div class="v mono" id="viewDistance">-</div></div>
+              <div class="setting"><div class="k">SIM-DISTANCE</div><div class="v mono" id="simDistance">-</div></div>
+              <div class="setting"><div class="k">MAX-PLAYERS</div><div class="v mono" id="maxPlayers">-</div></div>
+              <div class="setting"><div class="k">PVP</div><div class="v mono" id="pvp">-</div></div>
+            </div>
+
+            <div class="logs">
+              <div class="logs-head">
+                <div class="section-title">LIVE LOGS</div>
+                <div class="mono small" id="logHint">WebSocket</div>
+              </div>
+              <pre id="logBox" class="log-box">Bridge 연결되면 로그가 표시됩니다.</pre>
+            </div>
+          </div>
+
+          <div class="foot">
+            <div class="mono small">업데이트: <span id="updated">-</span></div>
+            <div class="mono small">source: <span id="source">-</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer mono">
+      Public status: mcsrvstat.us • Settings/Logs: your Bridge API (no-login)
+    </footer>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>w
