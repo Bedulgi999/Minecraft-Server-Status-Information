@@ -1,8 +1,8 @@
 // ============================
 // ✅ 너 서버 고정 설정 (여기만 바꿔)
 // ============================
-const SERVER_NAME = "My Minecraft Server";
-const SERVER_ADDRESS = "YOUR_DOMAIN_OR_PUBLIC_IP:25565"; // 예: play.example.com:25565
+const SERVER_NAME = "Minecraft Server";
+const SERVER_ADDRESS = "127.0.0.1:5500:25565"; // 예: play.example.com:25565
 
 // 브릿지 API (선택이지만 "난이도/설정" 보려면 필수)
 // 예: https://your-bridge.example.com
